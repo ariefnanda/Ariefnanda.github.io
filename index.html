@@ -3,215 +3,224 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Whack-a-Mole Sederhana</title>
+    <title>Typing Race Sederhana</title>
     
     <style>
         /* CSS untuk tampilan game */
         body {
-            font-family: 'BlinkMacSystemFont', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             text-align: center;
-            background-color: #556b2f; /* Hijau Olive Gelap (Warna Tanah) */
-            color: #fff;
+            background-color: #f0f8ff; /* AliceBlue */
+            color: #333;
             padding: 20px;
         }
 
         .container {
-            width: fit-content;
+            max-width: 700px;
             margin: 0 auto;
-            padding: 20px;
-            background-color: #8fbc8f; /* Hijau Medium */
-            border: 8px solid #a0522d; /* Cokelat Tanah */
-            border-radius: 20px;
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
+            padding: 30px;
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
         }
 
         h1 {
-            color: #333;
-            margin-bottom: 15px;
+            color: #007bff;
+            margin-bottom: 25px;
         }
 
-        #scoreDisplay {
-            font-size: 2em;
-            font-weight: bold;
-            color: #ff6347; /* Merah Tomat */
+        #targetText {
+            font-size: 1.3em;
+            padding: 20px;
             margin-bottom: 20px;
-        }
-        
-        #gameBoard {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr); /* Grid 3x3 */
-            gap: 15px;
-            width: 330px; 
-            height: 330px;
-            margin: 0 auto;
+            border: 2px dashed #007bff;
+            background-color: #e6f0ff;
+            border-radius: 8px;
+            text-align: left;
         }
 
-        .hole {
-            background-color: #696969; /* Abu-abu Gelap (Lubang) */
-            border: 5px solid #333;
-            border-radius: 50%; /* Bentuk lingkaran */
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .mole {
-            position: absolute;
-            font-size: 3em; /* Ukuran Tikus/Target */
-            cursor: pointer;
-            user-select: none;
-            transition: transform 0.2s ease-out; /* Animasi muncul */
-            transform: translateY(100%); /* Tersembunyi di awal */
-        }
-        
-        .hole.up .mole {
-            transform: translateY(0); /* Muncul ke atas */
-        }
-
-        .miss {
-            color: red;
-            font-size: 0.9em;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            animation: fadeout 1s forwards;
-        }
-        
-        @keyframes fadeout {
-            0% { opacity: 1; transform: translate(-50%, -50%); }
-            100% { opacity: 0; transform: translate(-50%, -100%); }
-        }
-
-        #timerDisplay {
-            margin-top: 15px;
-            font-size: 1.5em;
-            color: #ffcc00;
-        }
-
-        #startStopButton {
-            padding: 10px 20px;
+        #inputText {
+            width: 95%;
+            padding: 15px;
             font-size: 1.2em;
+            border: 2px solid #ccc;
+            border-radius: 8px;
+            box-sizing: border-box;
+            resize: none; /* Nonaktifkan resize area teks */
+            height: 100px;
+            transition: border-color 0.3s;
+        }
+        
+        .correct {
+            border-color: #28a745 !important; /* Hijau */
+        }
+        
+        .incorrect {
+            border-color: #dc3545 !important; /* Merah */
+        }
+
+        #result {
+            margin-top: 25px;
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #28a745;
+        }
+        
+        #instructions {
+            margin-top: 15px;
+            color: #6c757d;
+        }
+
+        #resetButton {
+            padding: 10px 20px;
+            font-size: 1em;
             margin-top: 20px;
-            background-color: #3498db;
-            color: white;
+            background-color: #ffc107;
+            color: #333;
             border: none;
             border-radius: 5px;
             cursor: pointer;
             transition: background-color 0.3s;
         }
-        #startStopButton:hover {
-            background-color: #2980b9;
+        #resetButton:hover {
+            background-color: #e0a800;
         }
-        
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h1>🔨 Pukul Tikus! (Whack-a-Mole)</h1>
+        <h1>⌨️ Game Balap Ketik</h1>
         
-        <div id="scoreDisplay">Skor: 0</div>
-        <div id="timerDisplay">Waktu: 30 detik</div>
+        <div id="targetText">Klik tombol "Mulai Ulang" di bawah untuk mendapatkan kalimat baru.</div>
+        
+        <textarea id="inputText" placeholder="Mulai mengetik di sini..." disabled></textarea>
 
-        <div id="gameBoard">
-            </div>
+        <div id="instructions">
+            Ketepatan: <span id="accuracyDisplay">100%</span> | Karakter Salah: <span id="errorCount">0</span>
+        </div>
         
-        <button id="startStopButton" onclick="startGame()">Mulai Game</button>
+        <div id="result"></div>
+        
+        <button id="resetButton" onclick="startGame()">Mulai Ulang</button>
     </div>
 
     <script>
         // Logika Game JavaScript
-        const gameBoard = document.getElementById('gameBoard');
-        const scoreDisplay = document.getElementById('scoreDisplay');
-        const timerDisplay = document.getElementById('timerDisplay');
-        const startStopButton = document.getElementById('startStopButton');
+        const textSamples = [
+            "Programmer yang baik menulis kode yang mudah dibaca, bukan hanya kode yang berfungsi.",
+            "Semangat belajar adalah kunci utama untuk menguasai teknologi baru dengan cepat.",
+            "Kreativitas sering muncul dari keterbatasan, gunakan batasan sebagai motivasi.",
+            "Semua orang tahu bahwa waktu adalah uang, namun fokus lebih penting dari keduanya.",
+            "Dengan ketekunan, Anda dapat mencapai tujuan yang terlihat mustahil pada awalnya."
+        ];
 
-        // --- Variabel Game ---
-        let score = 0;
-        let time = 30; // Waktu game dalam detik
-        let gameRunning = false;
-        let moleTimerId; // Untuk mengontrol munculnya tikus
-        let gameTimerId; // Untuk menghitung mundur waktu
-        
-        // Konstanta
-        const NUM_HOLES = 9;
-        const MOLE_EMOJI = '🐭';
-        const HIT_EMOJI = '💥';
+        let targetText = "";
+        let startTime = 0;
+        let isTyping = false;
+        let totalCharsTyped = 0;
+        let errorCount = 0;
 
-        // 1. Fungsi untuk memulai permainan
+        // Mengambil elemen DOM
+        const targetTextElement = document.getElementById('targetText');
+        const inputTextElement = document.getElementById('inputText');
+        const resultElement = document.getElementById('result');
+        const accuracyDisplay = document.getElementById('accuracyDisplay');
+        const errorCountDisplay = document.getElementById('errorCount');
+
+        // 1. Fungsi untuk memulai/mereset game
         function startGame() {
-            if (gameRunning) return;
-
             // Reset state
-            score = 0;
-            time = 30;
-            gameRunning = true;
-            scoreDisplay.textContent = "Skor: 0";
-            startStopButton.textContent = "Berjalan...";
-            startStopButton.disabled = true;
+            isTyping = false;
+            startTime = 0;
+            totalCharsTyped = 0;
+            errorCount = 0;
 
-            // Buat lubang jika belum ada
-            if (gameBoard.children.length === 0) {
-                createHoles();
+            // Pilih kalimat acak baru
+            const randomIndex = Math.floor(Math.random() * textSamples.length);
+            targetText = textSamples[randomIndex];
+
+            // Reset tampilan
+            targetTextElement.textContent = targetText;
+            inputTextElement.value = '';
+            inputTextElement.disabled = false;
+            inputTextElement.focus();
+            inputTextElement.classList.remove('correct', 'incorrect');
+            resultElement.textContent = "Mulai mengetik ketika siap!";
+            accuracyDisplay.textContent = '100%';
+            errorCountDisplay.textContent = '0';
+        }
+
+        // 2. Fungsi yang dijalankan saat input teks berubah
+        inputTextElement.addEventListener('input', () => {
+            const typedText = inputTextElement.value;
+            const target = targetText;
+            
+            // Mulai waktu saat karakter pertama diketik
+            if (!isTyping && typedText.length > 0) {
+                isTyping = true;
+                startTime = new Date().getTime();
             }
-
-            // Mulai Timer Game (Hitung Mundur)
-            gameTimerId = setInterval(countdown, 1000);
             
-            // Mulai Timer Tikus (Spawn)
-            moleTimerId = setInterval(peep, 1000); // Tikus muncul setiap 1 detik
-        }
-
-        // 2. Fungsi untuk menghitung mundur
-        function countdown() {
-            time--;
-            timerDisplay.textContent = `Waktu: ${time} detik`;
-
-            if (time <= 0) {
-                endGame();
+            // --- Cek Kesalahan dan Akurasi ---
+            let isMatch = true;
+            let currentErrors = 0;
+            
+            for (let i = 0; i < typedText.length; i++) {
+                if (typedText[i] !== target[i]) {
+                    isMatch = false;
+                    currentErrors++;
+                }
             }
-        }
-
-        // 3. Fungsi untuk mengakhiri permainan
-        function endGame() {
-            clearInterval(gameTimerId);
-            clearInterval(moleTimerId);
-            gameRunning = false;
-            startStopButton.textContent = "Mulai Lagi";
-            startStopButton.disabled = false;
-            timerDisplay.textContent = `WAKTU HABIS! Skor Akhir: ${score}`;
             
-            // Sembunyikan semua tikus yang mungkin masih muncul
-            document.querySelectorAll('.hole').forEach(hole => {
-                hole.classList.remove('up');
-            });
-        }
+            totalCharsTyped = typedText.length;
+            errorCount = currentErrors;
 
-        // 4. Fungsi untuk membuat elemen lubang
-        function createHoles() {
-            for (let i = 0; i < NUM_HOLES; i++) {
-                const hole = document.createElement('div');
-                hole.classList.add('hole');
-                hole.dataset.id = i;
-                
-                const mole = document.createElement('div');
-                mole.classList.add('mole');
-                mole.textContent = MOLE_EMOJI;
-                mole.addEventListener('click', whackMole);
+            const accuracy = totalCharsTyped === 0 ? 100 : ((totalCharsTyped - errorCount) / totalCharsTyped) * 100;
+            accuracyDisplay.textContent = `${accuracy.toFixed(1)}%`;
+            errorCountDisplay.textContent = errorCount;
 
-                hole.appendChild(mole);
-                gameBoard.appendChild(hole);
+
+            // Update visual border
+            if (typedText.length === 0) {
+                inputTextElement.classList.remove('correct', 'incorrect');
+            } else if (!isMatch) {
+                inputTextElement.classList.add('incorrect');
+                inputTextElement.classList.remove('correct');
+            } else {
+                inputTextElement.classList.remove('incorrect');
+                // Pengecekan Akhir
+                if (typedText === target) {
+                    inputTextElement.classList.add('correct');
+                    finishGame();
+                } else {
+                    inputTextElement.classList.remove('correct');
+                }
             }
+        });
+
+        // 3. Fungsi saat game selesai
+        function finishGame() {
+            if (!isTyping) return; // Jangan jalankan jika belum mengetik
+
+            const endTime = new Date().getTime();
+            const timeTaken = (endTime - startTime) / 1000; // Dalam detik
+            
+            // Hitung WPM (Words Per Minute) - diasumsikan 1 kata = 5 karakter
+            const wordCount = targetText.length / 5;
+            const wpm = (wordCount / timeTaken) * 60;
+
+            resultElement.innerHTML = `
+                ✨ Selesai! Waktu Anda: **${timeTaken.toFixed(2)} detik**.<br>
+                Kecepatan: **${wpm.toFixed(0)} WPM** (Kata per Menit).
+            `;
+            
+            inputTextElement.disabled = true;
+            isTyping = false;
         }
 
-        // 5. Fungsi agar tikus muncul
-        function peep() {
-            if (!gameRunning) return;
-            
-            const holes = document.querySelectorAll('.hole');
-            
-            // Pastikan tidak ada tikus yang sedang muncul
-            holes
+        // --- Inisialisasi ---
+        document.addEventListener('DOMContentLoaded', startGame);
+    </script>
+</body>
+</html>
