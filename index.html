@@ -3,43 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MOBA Mini - Tower Defense</title>
+    <title>Balap Motor Rintangan Sederhana</title>
     
     <style>
         /* CSS untuk tampilan game */
         body {
-            font-family: 'Consolas', monospace;
+            font-family: 'Arial', sans-serif;
             text-align: center;
-            background-color: #2c3e50; /* Warna biru gelap */
-            color: #ecf0f1;
+            background-color: #34495e; /* Biru gelap */
+            color: white;
             padding: 20px;
         }
 
         .container {
             width: fit-content;
             margin: 0 auto;
-            border: 5px solid #e74c3c; /* Border Merah */
-            background-color: #34495e;
-            box-shadow: 0 0 20px rgba(231, 76, 60, 0.5);
+            border: 5px solid #f1c40f; /* Kuning emas */
+            background-color: #2c3e50;
+            box-shadow: 0 0 20px rgba(241, 196, 15, 0.7);
         }
 
         canvas {
             display: block;
+            background-color: #555; /* Warna latar jalanan */
         }
 
         #info {
             margin-top: 15px;
-            font-size: 1.1em;
-        }
-
-        #scoreDisplay {
-            color: #f1c40f; /* Kuning Emas */
-            font-weight: bold;
-        }
-        
-        #baseHpDisplay {
-            color: #2ecc71; /* Hijau Emerald */
-            font-weight: bold;
+            font-size: 1.2em;
         }
         
         #gameOverScreen {
@@ -48,9 +39,9 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.9);
+            background-color: rgba(0, 0, 0, 0.85);
             color: white;
-            display: none; 
+            display: none; /* Tersembunyi saat game dimulai */
             flex-direction: column;
             justify-content: center;
             align-items: center;
@@ -58,36 +49,32 @@
         }
 
         #gameOverScreen button {
-            padding: 12px 25px;
-            font-size: 1.2em;
-            margin-top: 25px;
-            background-color: #3498db; /* Biru */
+            padding: 10px 20px;
+            font-size: 1.1em;
+            margin-top: 20px;
+            background-color: #e74c3c; /* Merah */
             color: white;
             border: none;
             cursor: pointer;
-            border-radius: 8px;
-            transition: background-color 0.3s;
-        }
-        #gameOverScreen button:hover {
-            background-color: #2980b9;
+            border-radius: 5px;
         }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <canvas id="gameCanvas" width="800" height="150"></canvas> 
+        <canvas id="gameCanvas" width="400" height="600"></canvas>
     </div>
 
     <div id="info">
-        HP Markas: <span id="baseHpDisplay">100</span> | Musuh Hancur: <span id="scoreDisplay">0</span>
+        Skor Jarak: <span id="scoreDisplay">0</span> | Kecepatan: <span id="speedDisplay">5</span>
         <br>
-        Tujuan: Hancurkan Minion musuh sebelum mereka menghancurkan markas Anda.
+        Kontrol: **A** (Kiri), **D** (Kanan)
     </div>
 
     <div id="gameOverScreen">
-        <h1>MARKAS HANCUR! (GAME OVER)</h1>
-        <p>Anda berhasil bertahan dari <span id="finalScore">0</span> Minion.</p>
+        <h1>CRASH! (GAME OVER)</h1>
+        <p>Skor Jarak Akhir Anda: <span id="finalScore">0</span></p>
         <button onclick="startGame()">Mulai Lagi</button>
     </div>
 
@@ -95,8 +82,8 @@
         // Logika Game JavaScript
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        const baseHpDisplay = document.getElementById('baseHpDisplay');
         const scoreDisplay = document.getElementById('scoreDisplay');
+        const speedDisplay = document.getElementById('speedDisplay');
         const gameOverScreen = document.getElementById('gameOverScreen');
         const finalScore = document.getElementById('finalScore');
 
@@ -104,34 +91,29 @@
         let gameLoopId;
         let isGameOver = false;
         let score = 0;
+        let gameSpeed = 5; // Kecepatan awal
         
-        // Objek Markas (Base)
-        let base = {
-            x: 20,
-            y: canvas.height / 2,
-            width: 15,
-            height: 100,
-            hp: 100,
-            maxHp: 100,
-            color: '#2ecc71' // Hijau
+        let player = {
+            x: canvas.width / 2,
+            y: canvas.height - 50,
+            width: 30,
+            height: 50,
+            speed: 5,
+            color: '#f39c12' // Kuning
         };
         
-        // Objek Turret (Pemain)
-        let turret = {
-            x: 100,
-            y: canvas.height / 2,
-            size: 10,
-            range: 300,
-            fireRate: 500, // ms
-            lastShot: 0,
-            color: '#3498db' // Biru
-        };
-        
-        let minions = [];
-        let bullets = [];
-        
-        let minionSpawnTimer = 0;
-        const SPAWN_DELAY = 1500; // Minion muncul setiap 1.5 detik
+        let obstacles = [];
+        let keys = {};
+        let lastObstacleTime = 0;
+        const OBSTACLE_INTERVAL = 1000; // Milidetik
+
+        // --- Listener Kontrol ---
+        document.addEventListener('keydown', (e) => {
+            keys[e.key.toLowerCase()] = true;
+        });
+        document.addEventListener('keyup', (e) => {
+            keys[e.key.toLowerCase()] = false;
+        });
 
         // --- Fungsi Utama Game ---
 
@@ -139,11 +121,10 @@
             // Reset semua variabel
             isGameOver = false;
             score = 0;
-            base.hp = base.maxHp;
-            minions = [];
-            bullets = [];
-            minionSpawnTimer = 0;
-            turret.lastShot = 0;
+            gameSpeed = 5;
+            player.x = canvas.width / 2;
+            obstacles = [];
+            lastObstacleTime = 0;
             
             gameOverScreen.style.display = 'none';
             
@@ -155,198 +136,61 @@
         }
 
         function updateDisplay() {
-            baseHpDisplay.textContent = base.hp;
-            scoreDisplay.textContent = score;
+            scoreDisplay.textContent = Math.floor(score);
+            speedDisplay.textContent = gameSpeed.toFixed(1);
         }
 
-        function drawBase() {
-            ctx.fillStyle = base.color;
-            ctx.fillRect(base.x, base.y - base.height / 2, base.width, base.height);
-            // Gambar HP Bar di atas markas (sederhana)
-            ctx.fillStyle = 'red';
-            ctx.fillRect(base.x - 5, base.y - base.height / 2 - 10, 25, 5); 
-            ctx.fillStyle = 'lime';
-            ctx.fillRect(base.x - 5, base.y - base.height / 2 - 10, 25 * (base.hp / base.maxHp), 5); 
+        function drawPlayer() {
+            ctx.fillStyle = player.color;
+            ctx.fillRect(player.x - player.width / 2, player.y - player.height / 2, player.width, player.height);
+            // Tambahkan visual motor sederhana (roda)
+            ctx.fillStyle = '#111';
+            ctx.fillRect(player.x - player.width / 2, player.y + player.height / 2 - 5, 5, 5); // Roda depan
+            ctx.fillRect(player.x + player.width / 2 - 5, player.y + player.height / 2 - 5, 5, 5); // Roda belakang
         }
 
-        function drawTurret() {
-            ctx.fillStyle = turret.color;
-            ctx.beginPath();
-            ctx.arc(turret.x, turret.y, turret.size, 0, Math.PI * 2);
-            ctx.fill();
+        function updatePlayer() {
+            // Gerakan horizontal
+            if (keys['a']) player.x -= player.speed;
+            if (keys['d']) player.x += player.speed;
+
+            // Batasi gerakan horizontal di dalam canvas
+            const halfWidth = player.width / 2;
+            player.x = Math.max(halfWidth, Math.min(canvas.width - halfWidth, player.x));
         }
 
-        // --- Minion ---
-        function spawnMinion() {
-            minions.push({
-                x: canvas.width,
-                y: canvas.height / 2,
-                size: 8,
-                speed: 1, 
-                damage: 5,
-                hp: 10,
-                color: '#e74c3c' // Merah
+        // --- Rintangan (Obstacles) ---
+        function spawnObstacle() {
+            obstacles.push({
+                x: Math.random() * (canvas.width - 30) + 15, // Posisi X acak
+                y: 0, // Mulai dari atas
+                width: 20,
+                height: 20,
+                color: '#e74c3c' // Merah (Bahaya)
             });
         }
 
-        function updateMinions() {
-            for (let i = minions.length - 1; i >= 0; i--) {
-                const minion = minions[i];
-                minion.x -= minion.speed; // Bergerak ke kiri (menuju markas)
-                
-                // Cek tabrakan dengan markas
-                if (minion.x - minion.size <= base.x + base.width) {
-                    base.hp -= minion.damage;
-                    minions.splice(i, 1); // Hancurkan minion setelah menyerang
-                    updateDisplay();
-                    
-                    if (base.hp <= 0) {
-                        endGame();
-                        return;
-                    }
-                    continue;
-                }
+        function updateObstacles(deltaTime) {
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                const obstacle = obstacles[i];
+                // Kecepatan rintangan sama dengan kecepatan game
+                obstacle.y += gameSpeed; 
 
-                // Gambar minion
-                ctx.fillStyle = minion.color;
-                ctx.beginPath();
-                ctx.arc(minion.x, minion.y, minion.size, 0, Math.PI * 2);
-                ctx.fill();
-                
-                // Gambar HP Bar minion (sangat sederhana)
-                ctx.fillStyle = 'red';
-                ctx.fillRect(minion.x - 5, minion.y - 15, 10, 3); 
-                // Karena minion hanya punya 10 HP, ini hanya visual sederhana
-            }
-        }
-
-        // --- Tembakan ---
-        function turretFire(target) {
-            bullets.push({
-                x: turret.x,
-                y: turret.y,
-                radius: 4,
-                speed: 5,
-                color: 'yellow',
-                target: target // Target peluru
-            });
-            turret.lastShot = Date.now();
-        }
-
-        function updateBullets() {
-            for (let i = bullets.length - 1; i >= 0; i--) {
-                const bullet = bullets[i];
-                
-                // Gerak menuju target (minion pertama)
-                const target = bullet.target;
-                if (!target) {
-                    bullets.splice(i, 1);
+                // Hapus rintangan jika keluar dari layar
+                if (obstacle.y > canvas.height) {
+                    obstacles.splice(i, 1);
                     continue;
                 }
                 
-                const dx = target.x - bullet.x;
-                const dy = target.y - bullet.y;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-                
-                // Normalisasi kecepatan
-                bullet.x += (dx / dist) * bullet.speed;
-                bullet.y += (dy / dist) * bullet.speed;
-
-                // Gambar peluru
-                ctx.fillStyle = bullet.color;
-                ctx.beginPath();
-                ctx.arc(bullet.x, bullet.y, bullet.radius, 0, Math.PI * 2);
-                ctx.fill();
-            }
-        }
-
-        // --- Logika Game ---
-        function checkCollisions() {
-            // 1. Peluru vs Minion
-            for (let i = bullets.length - 1; i >= 0; i--) {
-                const bullet = bullets[i];
-                
-                // Hanya perlu cek tabrakan dengan target peluru
-                const target = bullet.target;
-                if (!target) continue;
-
-                const dx = bullet.x - target.x;
-                const dy = bullet.y - target.y;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-
-                if (dist < bullet.radius + target.size / 2) {
-                    // Minion tertembak! (Anggap 1 peluru = 1 hit)
-                    
-                    // Hancurkan minion
-                    const targetIndex = minions.indexOf(target);
-                    if (targetIndex > -1) {
-                         minions.splice(targetIndex, 1); 
-                         score += 1;
-                         updateDisplay();
-                    }
-                    
-                    bullets.splice(i, 1); // Hancurkan peluru
-                }
-            }
-        }
-
-        function turretLogic() {
-            // Cari minion terdekat dalam jangkauan
-            const target = minions.find(m => {
-                const dx = m.x - turret.x;
-                const dy = m.y - turret.y;
-                return Math.sqrt(dx * dx + dy * dy) <= turret.range;
-            });
-
-            if (target && (Date.now() - turret.lastShot > turret.fireRate)) {
-                turretFire(target);
+                ctx.fillStyle = obstacle.color;
+                ctx.fillRect(obstacle.x - obstacle.width / 2, obstacle.y - obstacle.height / 2, obstacle.width, obstacle.height);
             }
         }
         
-        function endGame() {
-            isGameOver = true;
-            cancelAnimationFrame(gameLoopId);
-            
-            finalScore.textContent = score;
-            // Tampilkan layar game over
-            gameOverScreen.style.display = 'flex';
-        }
-
-        // --- Loop Utama Game ---
-        function gameLoop(timestamp) {
-            if (isGameOver) return;
-
-            // 1. Bersihkan Canvas
-            ctx.fillStyle = '#111';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // 2. Spawn Minion
-            minionSpawnTimer += 16.67; // Approx 60 FPS
-            if (minionSpawnTimer >= SPAWN_DELAY) {
-                spawnMinion();
-                minionSpawnTimer = 0;
-            }
-
-            // 3. Logika & Update
-            turretLogic();
-            
-            // 4. Update dan Gambar
-            updateMinions();
-            updateBullets();
-            
-            // 5. Deteksi Tabrakan
-            checkCollisions();
-            
-            // 6. Gambar
-            drawBase();
-            drawTurret();
-
-            // Loop berikutnya
-            gameLoopId = requestAnimationFrame(gameLoop);
-        }
-
-        // Mulai Game saat pertama kali dimuat
-        document.addEventListener('DOMContentLoaded', startGame);
-    </script>
-</body>
-</html>
+        // --- Logika Game ---
+        
+        function checkCollisions() {
+            const playerRect = {
+                left: player.x - player.width / 2,
+                right: player.x + player.width / 2,
+                top:
