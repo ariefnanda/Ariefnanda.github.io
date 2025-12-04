@@ -3,196 +3,163 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Game Tebak Angka Rahasia</title>
+    <title>Game Batu Kertas Gunting</title>
 
     <style>
         /* CSS untuk tampilan game */
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Arial', sans-serif;
             text-align: center;
+            background-color: #f8f9fa;
+            color: #212529;
             margin-top: 50px;
-            background-color: #e9ecef;
-            color: #333;
         }
 
         .container {
             width: 90%;
-            max-width: 400px;
+            max-width: 600px;
             margin: 0 auto;
-            padding: 30px;
+            padding: 20px;
             background-color: #ffffff;
-            border-radius: 10px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
         }
 
         h1 {
             color: #007bff;
+            margin-bottom: 25px;
+        }
+
+        .choices {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 30px;
+        }
+
+        .choice-btn {
+            background-color: #e9ecef;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 3em; /* Ukuran besar untuk emoji */
+            transition: transform 0.2s, background-color 0.2s;
+        }
+
+        .choice-btn:hover {
+            background-color: #ced4da;
+            transform: scale(1.05);
+        }
+
+        .result-area {
+            border: 2px solid #adb5bd;
+            border-radius: 8px;
+            padding: 15px;
             margin-bottom: 20px;
+            min-height: 100px;
         }
 
-        #guessInput {
-            padding: 12px;
-            margin: 10px 0;
-            border: 2px solid #ced4da;
-            border-radius: 5px;
-            width: calc(100% - 24px);
-            box-sizing: border-box;
-            font-size: 16px;
-        }
-
-        #submitGuess {
-            padding: 12px 25px;
-            background-color: #28a745;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-            transition: background-color 0.3s ease;
-        }
-
-        #submitGuess:hover:not(:disabled) {
-            background-color: #218838;
-        }
-        
-        #submitGuess:disabled {
-            background-color: #6c757d;
-            cursor: not-allowed;
-        }
-
-        #message {
-            margin-top: 25px;
-            font-size: 1.3em;
+        #result {
+            font-size: 1.5em;
             font-weight: bold;
-            min-height: 30px; /* Memastikan ada ruang untuk pesan */
+            margin-bottom: 10px;
+        }
+
+        #score {
+            font-size: 1.1em;
+            color: #495057;
         }
         
-        #guessesCount {
-            margin-top: 15px;
-            font-size: 1em;
-            color: #6c757d;
-        }
+        .win { color: #28a745; }
+        .lose { color: #dc3545; }
+        .draw { color: #ffc107; }
         
-        #resetButton {
-            margin-top: 20px;
-            padding: 10px 20px;
-            background-color: #dc3545;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            display: none; /* Tersembunyi sampai game selesai */
-        }
-        
-        #resetButton:hover {
-            background-color: #c82333;
-        }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h1>Tebak Angka Rahasia 🔢</h1>
-        <p>Saya telah memilih angka antara **1 hingga 100**. Coba tebak!</p>
+        <h1>✊ Game Batu Kertas Gunting 🖐️</h1>
+        <p>Pilih salah satu ikon di bawah untuk melawan Komputer.</p>
 
-        <input type="number" id="guessInput" placeholder="Masukkan tebakan Anda">
-        
-        <button id="submitGuess">Tebak</button>
-        
-        <p id="message"></p>
-        
-        <p id="guessesCount">Jumlah Tebakan: 0</p>
-        
-        <button id="resetButton">Mulai Ulang Game</button>
+        <div class="choices">
+            <button class="choice-btn" data-choice="batu">✊</button>
+            <button class="choice-btn" data-choice="kertas">🖐️</button>
+            <button class="choice-btn" data-choice="gunting">✌️</button>
+        </div>
+
+        <div class="result-area">
+            <p id="playerChoice">Anda memilih: ?</p>
+            <p id="computerChoice">Komputer memilih: ?</p>
+            <p id="result">Pilih gerakan Anda untuk memulai!</p>
+        </div>
+
+        <p id="score">Skor: Anda 0 | Komputer 0</p>
     </div>
 
     <script>
         // Logika Game JavaScript
-        let targetNumber;
-        let guesses;
+        let playerScore = 0;
+        let computerScore = 0;
 
-        // 1. Fungsi untuk memulai/mereset game
-        function initializeGame() {
-            // Memilih angka acak antara 1 dan 100
-            targetNumber = Math.floor(Math.random() * 100) + 1;
-            guesses = 0;
-            
-            // Mengambil elemen DOM
-            const input = document.getElementById('guessInput');
-            const button = document.getElementById('submitGuess');
-            const message = document.getElementById('message');
-            const count = document.getElementById('guessesCount');
-            const resetBtn = document.getElementById('resetButton');
+        // Pilihan yang mungkin dan emoji-nya
+        const choices = {
+            'batu': { emoji: '✊', beats: 'gunting' },
+            'kertas': { emoji: '🖐️', beats: 'batu' },
+            'gunting': { emoji: '✌️', beats: 'kertas' }
+        };
 
-            // Reset tampilan dan status
-            message.textContent = 'Selamat menebak!';
-            count.textContent = 'Jumlah Tebakan: 0';
-            input.value = '';
-            button.disabled = false;
-            resetBtn.style.display = 'none';
-            input.focus();
-            
-            console.log("Angka Rahasia: " + targetNumber); // Untuk debugging
+        // Mengambil elemen DOM
+        const resultDisplay = document.getElementById('result');
+        const scoreDisplay = document.getElementById('score');
+        const playerChoiceDisplay = document.getElementById('playerChoice');
+        const computerChoiceDisplay = document.getElementById('computerChoice');
+        const choiceButtons = document.querySelectorAll('.choice-btn');
+
+        // 1. Fungsi untuk mendapatkan pilihan komputer secara acak
+        function getComputerChoice() {
+            const keys = Object.keys(choices);
+            const randomIndex = Math.floor(Math.random() * keys.length);
+            return keys[randomIndex]; // Mengembalikan 'batu', 'kertas', atau 'gunting'
         }
-        
-        // 2. Fungsi yang dijalankan saat tombol 'Tebak' diklik
-        function checkGuess() {
-            const input = document.getElementById('guessInput');
-            const button = document.getElementById('submitGuess');
-            const message = document.getElementById('message');
-            const count = document.getElementById('guessesCount');
-            const resetBtn = document.getElementById('resetButton');
-            
-            const userGuess = parseInt(input.value);
 
-            // Validasi input
-            if (isNaN(userGuess) || userGuess < 1 || userGuess > 100) {
-                message.textContent = '⚠️ Masukkan angka yang valid antara 1 dan 100.';
-                return;
-            }
+        // 2. Fungsi utama untuk memainkan satu putaran
+        function playRound(playerSelection) {
+            const computerSelection = getComputerChoice();
+            let outcome = '';
 
-            guesses++;
-            count.textContent = `Jumlah Tebakan: ${guesses}`;
+            // Tampilkan pilihan
+            playerChoiceDisplay.textContent = `Anda memilih: ${choices[playerSelection].emoji} ${playerSelection.toUpperCase()}`;
+            computerChoiceDisplay.textContent = `Komputer memilih: ${choices[computerSelection].emoji} ${computerSelection.toUpperCase()}`;
 
-            if (userGuess === targetNumber) {
-                // Kemenangan
-                message.textContent = `🎉 SELAMAT! Anda menebak ${targetNumber} dalam ${guesses} kali!`;
-                button.disabled = true; // Nonaktifkan tombol tebak
-                resetBtn.style.display = 'block'; // Tampilkan tombol reset
-            } else if (userGuess < targetNumber) {
-                // Terlalu rendah
-                message.textContent = '⬇️ Terlalu rendah! Coba lagi.';
+            // Logika Penentuan Pemenang
+            if (playerSelection === computerSelection) {
+                outcome = 'Seri!';
+                resultDisplay.className = 'draw';
+            } else if (choices[playerSelection].beats === computerSelection) {
+                outcome = 'Anda Menang!';
+                playerScore++;
+                resultDisplay.className = 'win';
             } else {
-                // Terlalu tinggi
-                message.textContent = '⬆️ Terlalu tinggi! Coba lagi.';
+                outcome = 'Anda Kalah!';
+                computerScore++;
+                resultDisplay.className = 'lose';
             }
 
-            input.value = ''; // Bersihkan input
-            input.focus(); // Fokuskan kembali
+            // Update Tampilan Hasil dan Skor
+            resultDisplay.textContent = outcome;
+            scoreDisplay.textContent = `Skor: Anda ${playerScore} | Komputer ${computerScore}`;
         }
-        
-        // 3. Menghubungkan fungsi ke elemen HTML
+
+        // 3. Menambahkan Event Listener ke setiap tombol pilihan
         document.addEventListener('DOMContentLoaded', () => {
-            initializeGame(); // Mulai game saat halaman dimuat
-            
-            // Listener untuk tombol 'Tebak'
-            document.getElementById('submitGuess').addEventListener('click', checkGuess);
-            
-            // Listener untuk tombol 'Reset'
-            document.getElementById('resetButton').addEventListener('click', initializeGame);
-            
-            // Memungkinkan penekanan Enter pada input untuk menebak
-            document.getElementById('guessInput').addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    if (!document.getElementById('submitGuess').disabled) {
-                         checkGuess();
-                    }
-                }
+            choiceButtons.forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const playerChoice = e.currentTarget.getAttribute('data-choice');
+                    playRound(playerChoice);
+                });
             });
         });
-
     </script>
 </body>
 </html>
-+-
-
