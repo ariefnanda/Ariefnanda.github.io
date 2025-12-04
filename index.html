@@ -3,213 +3,247 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Game Kliker Sederhana</title>
-
+    <title>Survival Shooter Sederhana</title>
+    
     <style>
         /* CSS untuk tampilan game */
         body {
-            font-family: 'Verdana', sans-serif;
+            font-family: Arial, sans-serif;
             text-align: center;
-            background-color: #ffe6cc;
-            color: #4d2600;
-            margin-top: 50px;
+            background-color: #333;
+            color: white;
+            padding: 20px;
         }
 
         .container {
-            width: 90%;
-            max-width: 700px;
+            width: fit-content;
             margin: 0 auto;
-            padding: 30px;
-            background-color: #fff9f0;
-            border: 5px solid #cc8400;
-            border-radius: 15px;
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+            border: 5px solid #ff4500; /* Border Merah-Oranye */
+            background-color: #222;
+            box-shadow: 0 0 20px rgba(255, 69, 0, 0.5);
         }
 
-        h1 {
-            color: #cc8400;
-            margin-bottom: 10px;
+        canvas {
+            display: block;
+        }
+
+        #info {
+            margin-top: 15px;
+            font-size: 1.2em;
         }
         
-        #scoreDisplay {
-            font-size: 3em;
-            font-weight: bold;
-            margin: 20px 0;
-            color: #804c00;
-        }
-
-        /* Tombol Utama Klik */
-        #mainButton {
-            background: none;
-            border: none;
-            cursor: pointer;
-            font-size: 8em; /* Ukuran emoji besar */
-            transition: transform 0.1s;
-            outline: none;
-            padding: 10px;
-        }
-
-        #mainButton:active {
-            transform: scale(0.95);
-        }
-
-        /* Area Upgrade */
-        .upgrade-section {
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px dashed #cc8400;
-        }
-        
-        .upgrade-section h2 {
-            color: #a05e00;
-            margin-bottom: 20px;
-        }
-
-        .upgrade-item {
-            display: flex;
-            justify-content: space-between;
+        #gameOverScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.85);
+            color: white;
+            display: none; /* Tersembunyi saat game dimulai */
+            flex-direction: column;
+            justify-content: center;
             align-items: center;
-            background-color: #ffdab3;
-            padding: 10px 15px;
-            margin-bottom: 10px;
-            border-radius: 8px;
-        }
-        
-        .upgrade-item span {
-            font-weight: bold;
+            z-index: 10;
         }
 
-        .buy-btn {
-            padding: 8px 15px;
-            background-color: #008000;
+        #gameOverScreen button {
+            padding: 10px 20px;
+            font-size: 1.1em;
+            margin-top: 20px;
+            background-color: #ff4500;
             color: white;
             border: none;
-            border-radius: 5px;
             cursor: pointer;
-            transition: background-color 0.2s;
-        }
-
-        .buy-btn:hover:not(:disabled) {
-            background-color: #006400;
-        }
-
-        .buy-btn:disabled {
-            background-color: #b0b0b0;
-            cursor: not-allowed;
+            border-radius: 5px;
         }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h1>🍪 Cookie Clicker Sederhana</h1>
-        
-        <div id="scoreDisplay">0</div>
+        <canvas id="gameCanvas" width="600" height="400"></canvas>
+    </div>
 
-        <button id="mainButton" aria-label="Klik untuk mendapatkan cookie">🍪</button>
-        <p>Klik cookie untuk mendapatkan poin!</p>
+    <div id="info">
+        HP: <span id="hpDisplay">100</span> | Skor: <span id="scoreDisplay">0</span>
+        <br>
+        Kontrol: **WASD** (Gerak), **Spasi** (Tembak)
+    </div>
 
-        <div class="upgrade-section">
-            <h2>Upgrade (Poin per detik)</h2>
-            
-            <div id="upgradesList">
-                </div>
-            
-            <p id="cpsDisplay">Poin Otomatis (CPS): 0 / detik</p>
-        </div>
+    <div id="gameOverScreen">
+        <h1>GAME OVER!</h1>
+        <p>Skor Akhir Anda: <span id="finalScore">0</span></p>
+        <button onclick="startGame()">Mulai Lagi</button>
     </div>
 
     <script>
         // Logika Game JavaScript
-        let score = 0;
-        let cookiesPerSecond = 0;
-        
-        // Data Upgrade: Nama, Biaya, dan Efek
-        const upgradeData = [
-            { id: 'mouse', name: '🖱️ Tangan Pembantu', cost: 10, cps: 0.1, count: 0 },
-            { id: 'grandma', name: '👵 Nenek Pengumpul', cost: 100, cps: 1, count: 0 },
-            { id: 'farm', name: '🌾 Ladang Cookie', cost: 1000, cps: 8, count: 0 }
-        ];
-
-        // Mengambil elemen DOM
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const hpDisplay = document.getElementById('hpDisplay');
         const scoreDisplay = document.getElementById('scoreDisplay');
-        const mainButton = document.getElementById('mainButton');
-        const upgradesList = document.getElementById('upgradesList');
-        const cpsDisplay = document.getElementById('cpsDisplay');
+        const gameOverScreen = document.getElementById('gameOverScreen');
+        const finalScore = document.getElementById('finalScore');
 
-        // 1. Fungsi Update Tampilan Utama
-        function updateDisplay() {
-            scoreDisplay.textContent = Math.floor(score); // Tampilkan bilangan bulat
-            cpsDisplay.textContent = `Poin Otomatis (CPS): ${cookiesPerSecond.toFixed(1)} / detik`;
-            updateUpgradeButtons();
-        }
+        // --- Variabel Game ---
+        let gameLoopId;
+        let isGameOver = false;
+        let score = 0;
+        let player = {
+            x: canvas.width / 2,
+            y: canvas.height / 2,
+            size: 20,
+            speed: 3,
+            hp: 100,
+            color: 'cyan'
+        };
+        let bullets = [];
+        let enemies = [];
+        let keys = {};
 
-        // 2. Fungsi untuk Menambahkan Poin
-        function clickCookie() {
-            score += 1;
+        // --- Listener Kontrol ---
+        document.addEventListener('keydown', (e) => {
+            keys[e.key.toLowerCase()] = true;
+            if (e.key === ' ' && !isGameOver) {
+                e.preventDefault(); // Mencegah spasi menggulir halaman
+                shoot();
+            }
+        });
+        document.addEventListener('keyup', (e) => {
+            keys[e.key.toLowerCase()] = false;
+        });
+
+        // --- Fungsi Utama Game ---
+
+        function startGame() {
+            // Reset semua variabel
+            isGameOver = false;
+            score = 0;
+            player.hp = 100;
+            player.x = canvas.width / 2;
+            player.y = canvas.height / 2;
+            bullets = [];
+            enemies = [];
+            
+            gameOverScreen.style.display = 'none';
+            
+            // Hentikan loop lama jika ada
+            if (gameLoopId) {
+                cancelAnimationFrame(gameLoopId);
+            }
+            // Mulai loop baru
+            gameLoopId = requestAnimationFrame(gameLoop); 
+            // Mulai spawn musuh
+            if (spawnIntervalId) clearInterval(spawnIntervalId);
+            spawnIntervalId = setInterval(spawnEnemy, 2000); // Musuh muncul setiap 2 detik
             updateDisplay();
         }
 
-        // 3. Fungsi Beli Upgrade
-        function buyUpgrade(index) {
-            const upgrade = upgradeData[index];
-            if (score >= upgrade.cost) {
-                score -= upgrade.cost;
-                cookiesPerSecond += upgrade.cps;
-                upgrade.count++;
+        function updateDisplay() {
+            hpDisplay.textContent = player.hp;
+            scoreDisplay.textContent = score;
+        }
+
+        function drawPlayer() {
+            ctx.fillStyle = player.color;
+            ctx.beginPath();
+            // Gambar lingkaran (Pemain)
+            ctx.arc(player.x, player.y, player.size / 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function updatePlayer() {
+            // Gerakan
+            if (keys['w']) player.y -= player.speed;
+            if (keys['s']) player.y += player.speed;
+            if (keys['a']) player.x -= player.speed;
+            if (keys['d']) player.x += player.speed;
+
+            // Batasi gerakan di dalam canvas
+            player.x = Math.max(player.size / 2, Math.min(canvas.width - player.size / 2, player.x));
+            player.y = Math.max(player.size / 2, Math.min(canvas.height - player.size / 2, player.y));
+        }
+
+        function shoot() {
+            // Tembakan sederhana ke arah atas (bisa dikembangkan)
+            bullets.push({
+                x: player.x,
+                y: player.y - player.size / 2,
+                radius: 5,
+                speed: 7,
+                color: 'yellow'
+            });
+        }
+
+        function updateBullets() {
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                const bullet = bullets[i];
+                bullet.y -= bullet.speed; // Tembak ke atas
+
+                // Hapus peluru jika keluar dari layar
+                if (bullet.y < 0) {
+                    bullets.splice(i, 1);
+                    continue;
+                }
                 
-                // Menaikkan biaya upgrade berikutnya (Contoh: naik 15%)
-                upgrade.cost = Math.floor(upgrade.cost * 1.15); 
-                
-                // Render ulang daftar upgrade dan tampilan utama
-                renderUpgrades();
-                updateDisplay();
+                ctx.fillStyle = bullet.color;
+                ctx.beginPath();
+                ctx.arc(bullet.x, bullet.y, bullet.radius, 0, Math.PI * 2);
+                ctx.fill();
             }
         }
 
-        // 4. Fungsi Render Daftar Upgrade
-        function renderUpgrades() {
-            upgradesList.innerHTML = ''; // Bersihkan daftar lama
+        // --- Musuh ---
+        let spawnIntervalId;
+        function spawnEnemy() {
+            if (isGameOver) return;
             
-            upgradeData.forEach((upgrade, index) => {
-                const itemDiv = document.createElement('div');
-                itemDiv.className = 'upgrade-item';
-                itemDiv.innerHTML = `
-                    <span>${upgrade.name} (x${upgrade.count})</span>
-                    <span>Biaya: ${upgrade.cost} | CPS: +${upgrade.cps}</span>
-                    <button id="buy-${upgrade.id}" class="buy-btn" 
-                        onclick="buyUpgrade(${index})"
-                        ${score < upgrade.cost ? 'disabled' : ''}>
-                        Beli
-                    </button>
-                `;
-                upgradesList.appendChild(itemDiv);
-            });
-        }
-        
-        // 5. Fungsi Update Status Tombol Beli (lebih cepat dari render penuh)
-        function updateUpgradeButtons() {
-             upgradeData.forEach((upgrade) => {
-                const button = document.getElementById(`buy-${upgrade.id}`);
-                if (button) {
-                     button.disabled = score < upgrade.cost;
-                }
+            // Spawn dari sisi acak
+            let x, y;
+            if (Math.random() < 0.5) { // Sisi kiri/kanan
+                x = Math.random() < 0.5 ? 0 : canvas.width;
+                y = Math.random() * canvas.height;
+            } else { // Sisi atas/bawah
+                x = Math.random() * canvas.width;
+                y = Math.random() < 0.5 ? 0 : canvas.height;
+            }
+            
+            enemies.push({
+                x: x,
+                y: y,
+                size: 15,
+                speed: 1, // Musuh bergerak pelan
+                color: 'red'
             });
         }
 
-        // 6. Loop Game (Poin Otomatis)
-        setInterval(() => {
-            score += cookiesPerSecond / 10; // Dibagi 10 karena interval 100ms
-            updateDisplay(); 
-        }, 100); // Update setiap 100 milidetik
+        function updateEnemies() {
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                const enemy = enemies[i];
 
-        // 7. Inisialisasi
-        document.addEventListener('DOMContentLoaded', () => {
-            mainButton.addEventListener('click', clickCookie);
-            renderUpgrades();
-            updateDisplay();
-        });
+                // Gerak menuju pemain (simulasi sederhana)
+                const dx = player.x - enemy.x;
+                const dy = player.y - enemy.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                
+                enemy.x += (dx / dist) * enemy.speed;
+                enemy.y += (dy / dist) * enemy.speed;
+
+                ctx.fillStyle = enemy.color;
+                ctx.beginPath();
+                ctx.arc(enemy.x, enemy.y, enemy.size / 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
         
-    </script>
-</body>
-</html>
+        // --- Deteksi Tabrakan ---
+        
+        function checkCollisions() {
+            // 1. Peluru vs Musuh
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                const bullet = bullets[i];
+                for (let j = enemies.length - 1; j >= 0; j--) {
+                    const enemy = enemies[j];
+                    
+                    const dx
