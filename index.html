@@ -3,240 +3,194 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Game Permata SPCK</title>
+    <title>Game Tebak Angka Rahasia</title>
+
     <style>
         /* CSS untuk tampilan game */
         body {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            margin: 0;
-            background-color: #f0f0f0;
-            font-family: sans-serif;
-            user-select: none;
-        }
-
-        #game-area {
-            width: 300px;
-            height: 300px;
-            border: 5px solid #333;
-            background-color: #c8e6c9; /* Warna hijau muda */
-            position: relative;
-            overflow: hidden;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-            touch-action: none; /* Penting untuk interaksi sentuh */
-        }
-
-        #player {
-            width: 20px;
-            height: 20px;
-            background-color: #e57373; /* Warna merah */
-            position: absolute;
-            border-radius: 5px;
-            transition: left 0.05s linear, top 0.05s linear;
-        }
-
-        .gem {
-            width: 15px;
-            height: 15px;
-            background-color: #81c784; /* Warna hijau permata */
-            position: absolute;
-            border-radius: 50%;
-            cursor: pointer;
-            box-shadow: 0 0 5px #81c784, 0 0 10px #81c784;
-            font-size: 0; /* Sembunyikan konten jika ada */
-        }
-
-        #score-board {
-            margin-bottom: 20px;
-            font-size: 1.5em;
-            font-weight: bold;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            text-align: center;
+            margin-top: 50px;
+            background-color: #e9ecef;
             color: #333;
         }
 
-        #instructions {
-            margin-top: 10px;
-            font-size: 0.9em;
-            color: #666;
+        .container {
+            width: 90%;
+            max-width: 400px;
+            margin: 0 auto;
+            padding: 30px;
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #007bff;
+            margin-bottom: 20px;
+        }
+
+        #guessInput {
+            padding: 12px;
+            margin: 10px 0;
+            border: 2px solid #ced4da;
+            border-radius: 5px;
+            width: calc(100% - 24px);
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+
+        #submitGuess {
+            padding: 12px 25px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+
+        #submitGuess:hover:not(:disabled) {
+            background-color: #218838;
+        }
+        
+        #submitGuess:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+
+        #message {
+            margin-top: 25px;
+            font-size: 1.3em;
+            font-weight: bold;
+            min-height: 30px; /* Memastikan ada ruang untuk pesan */
+        }
+        
+        #guessesCount {
+            margin-top: 15px;
+            font-size: 1em;
+            color: #6c757d;
+        }
+        
+        #resetButton {
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            display: none; /* Tersembunyi sampai game selesai */
+        }
+        
+        #resetButton:hover {
+            background-color: #c82333;
         }
     </style>
 </head>
 <body>
-    <div id="score-board">Skor: 0</div>
-    <div id="game-area">
-        <div id="player"></div>
-    </div>
-    <div id="instructions">
-        Gunakan tombol **WASD** (desktop) atau **sentuh** di area game (mobile) untuk bergerak. Kumpulkan permata!
+
+    <div class="container">
+        <h1>Tebak Angka Rahasia 🔢</h1>
+        <p>Saya telah memilih angka antara **1 hingga 100**. Coba tebak!</p>
+
+        <input type="number" id="guessInput" placeholder="Masukkan tebakan Anda">
+        
+        <button id="submitGuess">Tebak</button>
+        
+        <p id="message"></p>
+        
+        <p id="guessesCount">Jumlah Tebakan: 0</p>
+        
+        <button id="resetButton">Mulai Ulang Game</button>
     </div>
 
     <script>
-        // JavaScript untuk logika game
-        const gameArea = document.getElementById('game-area');
-        const player = document.getElementById('player');
-        const scoreBoard = document.getElementById('score-board');
-        let score = 0;
-        
-        // Ukuran area game dan pemain
-        const AREA_SIZE = 300;
-        const PLAYER_SIZE = 20;
-        const GEM_SIZE = 15;
-        const MOVE_STEP = 5; // Kecepatan gerakan
-        const SPAWN_INTERVAL = 2000; // Interval permata muncul (ms)
+        // Logika Game JavaScript
+        let targetNumber;
+        let guesses;
 
-        let playerX = (AREA_SIZE - PLAYER_SIZE) / 2;
-        let playerY = (AREA_SIZE - PLAYER_SIZE) / 2;
-        
-        // Atur posisi awal pemain
-        player.style.left = `${playerX}px`;
-        player.style.top = `${playerY}px`;
+        // 1. Fungsi untuk memulai/mereset game
+        function initializeGame() {
+            // Memilih angka acak antara 1 dan 100
+            targetNumber = Math.floor(Math.random() * 100) + 1;
+            guesses = 0;
+            
+            // Mengambil elemen DOM
+            const input = document.getElementById('guessInput');
+            const button = document.getElementById('submitGuess');
+            const message = document.getElementById('message');
+            const count = document.getElementById('guessesCount');
+            const resetBtn = document.getElementById('resetButton');
 
-        // Status tombol yang ditekan
-        const keys = {
-            'w': false,
-            'a': false,
-            's': false,
-            'd': false
-        };
-
-        // Fungsi untuk menggerakkan pemain
-        function movePlayer() {
-            let dx = 0;
-            let dy = 0;
-
-            if (keys['w']) dy -= MOVE_STEP;
-            if (keys['s']) dy += MOVE_STEP;
-            if (keys['a']) dx -= MOVE_STEP;
-            if (keys['d']) dx += MOVE_STEP;
-
-            // Perbarui posisi dengan batas area
-            playerX = Math.max(0, Math.min(AREA_SIZE - PLAYER_SIZE, playerX + dx));
-            playerY = Math.max(0, Math.min(AREA_SIZE - PLAYER_SIZE, playerY + dy));
-
-            player.style.left = `${playerX}px`;
-            player.style.top = `${playerY}px`;
+            // Reset tampilan dan status
+            message.textContent = 'Selamat menebak!';
+            count.textContent = 'Jumlah Tebakan: 0';
+            input.value = '';
+            button.disabled = false;
+            resetBtn.style.display = 'none';
+            input.focus();
+            
+            console.log("Angka Rahasia: " + targetNumber); // Untuk debugging
         }
+        
+        // 2. Fungsi yang dijalankan saat tombol 'Tebak' diklik
+        function checkGuess() {
+            const input = document.getElementById('guessInput');
+            const button = document.getElementById('submitGuess');
+            const message = document.getElementById('message');
+            const count = document.getElementById('guessesCount');
+            const resetBtn = document.getElementById('resetButton');
+            
+            const userGuess = parseInt(input.value);
 
-        // Fungsi untuk mendeteksi tabrakan (koleksi permata)
-        function checkCollision() {
-            const gems = document.querySelectorAll('.gem');
-            gems.forEach(gem => {
-                const gemRect = gem.getBoundingClientRect();
-                const playerRect = player.getBoundingClientRect();
+            // Validasi input
+            if (isNaN(userGuess) || userGuess < 1 || userGuess > 100) {
+                message.textContent = '⚠️ Masukkan angka yang valid antara 1 dan 100.';
+                return;
+            }
 
-                // Deteksi tabrakan sederhana (menggunakangetBoundingClientRect)
-                const isCollision = !(
-                    playerRect.right < gemRect.left ||
-                    playerRect.left > gemRect.right ||
-                    playerRect.bottom < gemRect.top ||
-                    playerRect.top > gemRect.bottom
-                );
+            guesses++;
+            count.textContent = `Jumlah Tebakan: ${guesses}`;
 
-                if (isCollision) {
-                    collectGem(gem);
+            if (userGuess === targetNumber) {
+                // Kemenangan
+                message.textContent = `🎉 SELAMAT! Anda menebak ${targetNumber} dalam ${guesses} kali!`;
+                button.disabled = true; // Nonaktifkan tombol tebak
+                resetBtn.style.display = 'block'; // Tampilkan tombol reset
+            } else if (userGuess < targetNumber) {
+                // Terlalu rendah
+                message.textContent = '⬇️ Terlalu rendah! Coba lagi.';
+            } else {
+                // Terlalu tinggi
+                message.textContent = '⬆️ Terlalu tinggi! Coba lagi.';
+            }
+
+            input.value = ''; // Bersihkan input
+            input.focus(); // Fokuskan kembali
+        }
+        
+        // 3. Menghubungkan fungsi ke elemen HTML
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeGame(); // Mulai game saat halaman dimuat
+            
+            // Listener untuk tombol 'Tebak'
+            document.getElementById('submitGuess').addEventListener('click', checkGuess);
+            
+            // Listener untuk tombol 'Reset'
+            document.getElementById('resetButton').addEventListener('click', initializeGame);
+            
+            // Memungkinkan penekanan Enter pada input untuk menebak
+            document.getElementById('guessInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    if (!document.getElementById('submitGuess').disabled) {
+                         checkGuess();
+                    }
                 }
             });
-        }
-
-        // Fungsi untuk mengumpulkan permata
-        function collectGem(gemElement) {
-            score++;
-            scoreBoard.textContent = `Skor: ${score}`;
-            gemElement.remove(); // Hapus permata
-        }
-
-        // Fungsi untuk memunculkan permata baru
-        function spawnGem() {
-            const gem = document.createElement('div');
-            gem.className = 'gem';
-
-            // Posisi acak di dalam area game
-            const randomX = Math.floor(Math.random() * (AREA_SIZE - GEM_SIZE));
-            const randomY = Math.floor(Math.random() * (AREA_SIZE - GEM_SIZE));
-
-            gem.style.left = `${randomX}px`;
-            gem.style.top = `${randomY}px`;
-
-            gameArea.appendChild(gem);
-        }
-
-        // Loop game utama
-        function gameLoop() {
-            movePlayer();
-            checkCollision();
-            requestAnimationFrame(gameLoop);
-        }
-
-        // Event Listener untuk pergerakan keyboard (desktop)
-        document.addEventListener('keydown', (e) => {
-            const key = e.key.toLowerCase();
-            if (keys.hasOwnProperty(key)) {
-                keys[key] = true;
-                e.preventDefault(); // Mencegah scrolling dengan spasi/panah
-            }
         });
 
-        document.addEventListener('keyup', (e) => {
-            const key = e.key.toLowerCase();
-            if (keys.hasOwnProperty(key)) {
-                keys[key] = false;
-            }
-        });
-        
-        // Event Listener untuk pergerakan sentuh (mobile)
-        let touchStart = null;
-        
-        gameArea.addEventListener('touchstart', (e) => {
-            e.preventDefault(); // Mencegah tindakan default browser
-            if (e.touches.length > 0) {
-                touchStart = {
-                    x: e.touches[0].clientX,
-                    y: e.touches[0].clientY
-                };
-            }
-        });
-
-        gameArea.addEventListener('touchmove', (e) => {
-            e.preventDefault();
-            if (e.touches.length > 0 && touchStart) {
-                const touchEnd = {
-                    x: e.touches[0].clientX,
-                    y: e.touches[0].clientY
-                };
-
-                const gameRect = gameArea.getBoundingClientRect();
-                
-                // Hitung posisi pemain berdasarkan sentuhan relatif terhadap area game
-                let newPlayerX = touchEnd.x - gameRect.left - (PLAYER_SIZE / 2);
-                let newPlayerY = touchEnd.y - gameRect.top - (PLAYER_SIZE / 2);
-
-                // Batasi posisi pemain
-                playerX = Math.max(0, Math.min(AREA_SIZE - PLAYER_SIZE, newPlayerX));
-                playerY = Math.max(0, Math.min(AREA_SIZE - PLAYER_SIZE, newPlayerY));
-
-                player.style.left = `${playerX}px`;
-                player.style.top = `${playerY}px`;
-                
-                // Pada mobile, gerakan dilakukan secara langsung pada touchmove
-                checkCollision();
-            }
-        });
-
-        gameArea.addEventListener('touchend', () => {
-            touchStart = null;
-        });
-
-
-        // Mulai game
-        gameLoop();
-        
-        // Mulai memunculkan permata secara berkala
-        setInterval(spawnGem, SPAWN_INTERVAL);
-        
-        // Tambahkan permata pertama segera
-        spawnGem(); 
     </script>
 </body>
 </html>
