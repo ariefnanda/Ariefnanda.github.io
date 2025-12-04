@@ -3,194 +3,254 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Balap Motor Rintangan Sederhana</title>
+    <title>Memory Game - Cari Pasangan</title>
     
     <style>
         /* CSS untuk tampilan game */
         body {
-            font-family: 'Arial', sans-serif;
+            font-family: 'Comic Sans MS', cursive, sans-serif;
             text-align: center;
-            background-color: #34495e; /* Biru gelap */
-            color: white;
+            background-color: #f7f3e8; /* Latar belakang Krem */
+            color: #333;
             padding: 20px;
         }
 
         .container {
             width: fit-content;
             margin: 0 auto;
-            border: 5px solid #f1c40f; /* Kuning emas */
-            background-color: #2c3e50;
-            box-shadow: 0 0 20px rgba(241, 196, 15, 0.7);
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 15px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
         }
 
-        canvas {
-            display: block;
-            background-color: #555; /* Warna latar jalanan */
+        h1 {
+            color: #ff6347; /* Merah Tomat */
+            margin-bottom: 20px;
+        }
+
+        #gameBoard {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr); /* Grid 4x4 */
+            gap: 10px;
+            width: 420px; /* Ukuran papan */
+            margin: 20px auto;
+        }
+
+        .card {
+            width: 100px;
+            height: 100px;
+            perspective: 1000px; /* Efek 3D flip */
+            cursor: pointer;
+        }
+
+        .card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            text-align: center;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+        }
+
+        .card.flipped .card-inner {
+            transform: rotateY(180deg);
+        }
+
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5em;
+            border-radius: 8px;
+        }
+
+        /* Belakang Kartu (Cover) */
+        .card-back {
+            background-color: #3498db; /* Biru */
+            color: white;
+            font-size: 1.5em;
+            font-weight: bold;
+            line-height: 1;
+        }
+
+        /* Depan Kartu (Isi) */
+        .card-front {
+            background-color: #ecf0f1;
+            color: #2c3e50;
+            transform: rotateY(180deg);
+        }
+        
+        .matched {
+            cursor: default;
+            opacity: 0.5;
         }
 
         #info {
-            margin-top: 15px;
-            font-size: 1.2em;
+            margin-top: 20px;
+            font-size: 1.1em;
         }
         
-        #gameOverScreen {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.85);
-            color: white;
-            display: none; /* Tersembunyi saat game dimulai */
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 10;
+        #attemptsDisplay {
+            color: #ff6347;
+            font-weight: bold;
         }
-
-        #gameOverScreen button {
+        
+        #winMessage {
+            margin-top: 25px;
+            font-size: 1.5em;
+            color: #2ecc71;
+            font-weight: bold;
+            display: none;
+        }
+        
+        #resetButton {
             padding: 10px 20px;
-            font-size: 1.1em;
+            font-size: 1em;
             margin-top: 20px;
-            background-color: #e74c3c; /* Merah */
+            background-color: #9b59b6; /* Ungu */
             color: white;
             border: none;
             cursor: pointer;
             border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        #resetButton:hover {
+            background-color: #8e44ad;
         }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <canvas id="gameCanvas" width="400" height="600"></canvas>
-    </div>
+        <h1>🧠 Memory Game: Cari Pasangan</h1>
+        
+        <div id="gameBoard">
+            </div>
 
-    <div id="info">
-        Skor Jarak: <span id="scoreDisplay">0</span> | Kecepatan: <span id="speedDisplay">5</span>
-        <br>
-        Kontrol: **A** (Kiri), **D** (Kanan)
-    </div>
-
-    <div id="gameOverScreen">
-        <h1>CRASH! (GAME OVER)</h1>
-        <p>Skor Jarak Akhir Anda: <span id="finalScore">0</span></p>
-        <button onclick="startGame()">Mulai Lagi</button>
+        <div id="info">
+            Percobaan Gagal: <span id="attemptsDisplay">0</span>
+        </div>
+        
+        <div id="winMessage">
+            🎉 Selamat! Anda menemukan semua pasangan!
+        </div>
+        
+        <button id="resetButton" onclick="startGame()">Mulai Ulang</button>
     </div>
 
     <script>
         // Logika Game JavaScript
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        const scoreDisplay = document.getElementById('scoreDisplay');
-        const speedDisplay = document.getElementById('speedDisplay');
-        const gameOverScreen = document.getElementById('gameOverScreen');
-        const finalScore = document.getElementById('finalScore');
+        const emojis = ['🍇', '🍓', '🍍', '🥝', '🍉', '🥭', '🍊', '🍎'];
+        let cards = [];
+        let flippedCards = []; // Kartu yang sedang terbuka (maks 2)
+        let matchedPairs = 0;
+        let attempts = 0; // Percobaan gagal
+        let isChecking = false; // Mencegah klik saat proses pengecekan
 
-        // --- Variabel Game ---
-        let gameLoopId;
-        let isGameOver = false;
-        let score = 0;
-        let gameSpeed = 5; // Kecepatan awal
-        
-        let player = {
-            x: canvas.width / 2,
-            y: canvas.height - 50,
-            width: 30,
-            height: 50,
-            speed: 5,
-            color: '#f39c12' // Kuning
-        };
-        
-        let obstacles = [];
-        let keys = {};
-        let lastObstacleTime = 0;
-        const OBSTACLE_INTERVAL = 1000; // Milidetik
+        const gameBoard = document.getElementById('gameBoard');
+        const attemptsDisplay = document.getElementById('attemptsDisplay');
+        const winMessage = document.getElementById('winMessage');
 
-        // --- Listener Kontrol ---
-        document.addEventListener('keydown', (e) => {
-            keys[e.key.toLowerCase()] = true;
-        });
-        document.addEventListener('keyup', (e) => {
-            keys[e.key.toLowerCase()] = false;
-        });
-
-        // --- Fungsi Utama Game ---
-
-        function startGame() {
-            // Reset semua variabel
-            isGameOver = false;
-            score = 0;
-            gameSpeed = 5;
-            player.x = canvas.width / 2;
-            obstacles = [];
-            lastObstacleTime = 0;
-            
-            gameOverScreen.style.display = 'none';
-            
-            if (gameLoopId) {
-                cancelAnimationFrame(gameLoopId);
+        // 1. Fungsi untuk mengacak array (Fisher-Yates Shuffle)
+        function shuffle(array) {
+            let currentIndex = array.length, randomIndex;
+            while (currentIndex !== 0) {
+                randomIndex = Math.floor(Math.random() * currentIndex);
+                currentIndex--;
+                [array[currentIndex], array[randomIndex]] = [
+                    array[randomIndex], array[currentIndex]];
             }
-            gameLoopId = requestAnimationFrame(gameLoop);
-            updateDisplay();
+            return array;
         }
 
-        function updateDisplay() {
-            scoreDisplay.textContent = Math.floor(score);
-            speedDisplay.textContent = gameSpeed.toFixed(1);
-        }
+        // 2. Fungsi untuk membuat papan permainan
+        function startGame() {
+            // Reset state
+            matchedPairs = 0;
+            attempts = 0;
+            flippedCards = [];
+            isChecking = false;
+            gameBoard.innerHTML = '';
+            attemptsDisplay.textContent = 0;
+            winMessage.style.display = 'none';
 
-        function drawPlayer() {
-            ctx.fillStyle = player.color;
-            ctx.fillRect(player.x - player.width / 2, player.y - player.height / 2, player.width, player.height);
-            // Tambahkan visual motor sederhana (roda)
-            ctx.fillStyle = '#111';
-            ctx.fillRect(player.x - player.width / 2, player.y + player.height / 2 - 5, 5, 5); // Roda depan
-            ctx.fillRect(player.x + player.width / 2 - 5, player.y + player.height / 2 - 5, 5, 5); // Roda belakang
-        }
-
-        function updatePlayer() {
-            // Gerakan horizontal
-            if (keys['a']) player.x -= player.speed;
-            if (keys['d']) player.x += player.speed;
-
-            // Batasi gerakan horizontal di dalam canvas
-            const halfWidth = player.width / 2;
-            player.x = Math.max(halfWidth, Math.min(canvas.width - halfWidth, player.x));
-        }
-
-        // --- Rintangan (Obstacles) ---
-        function spawnObstacle() {
-            obstacles.push({
-                x: Math.random() * (canvas.width - 30) + 15, // Posisi X acak
-                y: 0, // Mulai dari atas
-                width: 20,
-                height: 20,
-                color: '#e74c3c' // Merah (Bahaya)
+            // Duplikat emoji untuk membuat pasangan, lalu acak
+            cards = shuffle([...emojis, ...emojis]);
+            
+            // Buat elemen kartu di DOM
+            cards.forEach((emoji, index) => {
+                const cardElement = document.createElement('div');
+                cardElement.classList.add('card');
+                cardElement.dataset.index = index;
+                cardElement.dataset.value = emoji;
+                cardElement.innerHTML = `
+                    <div class="card-inner">
+                        <div class="card-face card-front">${emoji}</div>
+                        <div class="card-face card-back">?</div>
+                    </div>
+                `;
+                cardElement.addEventListener('click', () => flipCard(cardElement));
+                gameBoard.appendChild(cardElement);
             });
         }
 
-        function updateObstacles(deltaTime) {
-            for (let i = obstacles.length - 1; i >= 0; i--) {
-                const obstacle = obstacles[i];
-                // Kecepatan rintangan sama dengan kecepatan game
-                obstacle.y += gameSpeed; 
+        // 3. Fungsi saat kartu diklik
+        function flipCard(card) {
+            // Jika game selesai, sudah dicocokkan, sudah terbuka, atau sedang diperiksa, abaikan klik
+            if (isGameOver || card.classList.contains('matched') || card.classList.contains('flipped') || isChecking) {
+                return;
+            }
 
-                // Hapus rintangan jika keluar dari layar
-                if (obstacle.y > canvas.height) {
-                    obstacles.splice(i, 1);
-                    continue;
-                }
-                
-                ctx.fillStyle = obstacle.color;
-                ctx.fillRect(obstacle.x - obstacle.width / 2, obstacle.y - obstacle.height / 2, obstacle.width, obstacle.height);
+            // Buka kartu
+            card.classList.add('flipped');
+            flippedCards.push(card);
+
+            if (flippedCards.length === 2) {
+                isChecking = true;
+                setTimeout(checkMatch, 1000); // Tunggu 1 detik sebelum cek
             }
         }
-        
-        // --- Logika Game ---
-        
-        function checkCollisions() {
-            const playerRect = {
-                left: player.x - player.width / 2,
-                right: player.x + player.width / 2,
-                top:
+
+        // 4. Fungsi untuk mengecek pasangan
+        function checkMatch() {
+            const [card1, card2] = flippedCards;
+            const value1 = card1.dataset.value;
+            const value2 = card2.dataset.value;
+
+            if (value1 === value2) {
+                // PASANGAN COCOK
+                card1.classList.add('matched');
+                card2.classList.add('matched');
+                matchedPairs++;
+
+                if (matchedPairs === emojis.length) {
+                    // Semua pasangan ditemukan
+                    winMessage.style.display = 'block';
+                }
+            } else {
+                // TIDAK COCOK
+                setTimeout(() => {
+                    card1.classList.remove('flipped');
+                    card2.classList.remove('flipped');
+                    attempts++;
+                    attemptsDisplay.textContent = attempts;
+                }, 500); // Tunggu sebentar sebelum menutup
+            }
+
+            // Reset status
+            flippedCards = [];
+            isChecking = false;
+        }
+
+        // --- Inisialisasi ---
+        document.addEventListener('DOMContentLoaded', startGame);
+    </script>
+</body>
+</html>
