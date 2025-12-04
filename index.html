@@ -3,293 +3,215 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Runner Game Sederhana</title>
+    <title>Whack-a-Mole Sederhana</title>
     
     <style>
         /* CSS untuk tampilan game */
         body {
-            font-family: 'Pixelify Sans', Arial, sans-serif;
+            font-family: 'BlinkMacSystemFont', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             text-align: center;
-            background-color: #2f4f4f; /* Dark Slate Gray */
-            color: #ecf0f1;
+            background-color: #556b2f; /* Hijau Olive Gelap (Warna Tanah) */
+            color: #fff;
             padding: 20px;
         }
 
         .container {
             width: fit-content;
             margin: 0 auto;
-            border: 5px solid #ff00ff; /* Magenta Retro */
-            background-color: #333;
-            box-shadow: 0 0 20px rgba(255, 0, 255, 0.7);
+            padding: 20px;
+            background-color: #8fbc8f; /* Hijau Medium */
+            border: 8px solid #a0522d; /* Cokelat Tanah */
+            border-radius: 20px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
         }
 
-        canvas {
-            display: block;
-            background-color: #555; /* Warna latar belakang */
+        h1 {
+            color: #333;
+            margin-bottom: 15px;
         }
 
-        #info {
-            margin-top: 15px;
-            font-size: 1.2em;
+        #scoreDisplay {
+            font-size: 2em;
+            font-weight: bold;
+            color: #ff6347; /* Merah Tomat */
+            margin-bottom: 20px;
         }
         
-        #gameOverScreen {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.9);
-            color: #ff00ff;
-            display: none; 
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 10;
+        #gameBoard {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr); /* Grid 3x3 */
+            gap: 15px;
+            width: 330px; 
+            height: 330px;
+            margin: 0 auto;
         }
 
-        #gameOverScreen button {
-            padding: 12px 25px;
-            font-size: 1.2em;
-            margin-top: 25px;
-            background-color: #ff00ff;
-            color: #333;
-            border: none;
-            cursor: pointer;
-            border-radius: 5px;
+        .hole {
+            background-color: #696969; /* Abu-abu Gelap (Lubang) */
+            border: 5px solid #333;
+            border-radius: 50%; /* Bentuk lingkaran */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
         }
+
+        .mole {
+            position: absolute;
+            font-size: 3em; /* Ukuran Tikus/Target */
+            cursor: pointer;
+            user-select: none;
+            transition: transform 0.2s ease-out; /* Animasi muncul */
+            transform: translateY(100%); /* Tersembunyi di awal */
+        }
+        
+        .hole.up .mole {
+            transform: translateY(0); /* Muncul ke atas */
+        }
+
+        .miss {
+            color: red;
+            font-size: 0.9em;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            animation: fadeout 1s forwards;
+        }
+        
+        @keyframes fadeout {
+            0% { opacity: 1; transform: translate(-50%, -50%); }
+            100% { opacity: 0; transform: translate(-50%, -100%); }
+        }
+
+        #timerDisplay {
+            margin-top: 15px;
+            font-size: 1.5em;
+            color: #ffcc00;
+        }
+
+        #startStopButton {
+            padding: 10px 20px;
+            font-size: 1.2em;
+            margin-top: 20px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        #startStopButton:hover {
+            background-color: #2980b9;
+        }
+        
     </style>
 </head>
 <body>
 
     <div class="container">
-        <canvas id="gameCanvas" width="600" height="200"></canvas>
-    </div>
+        <h1>🔨 Pukul Tikus! (Whack-a-Mole)</h1>
+        
+        <div id="scoreDisplay">Skor: 0</div>
+        <div id="timerDisplay">Waktu: 30 detik</div>
 
-    <div id="info">
-        Jarak Tempuh: <span id="scoreDisplay">0</span> | Kecepatan: <span id="speedDisplay">4.0</span>
-        <br>
-        Kontrol: **Spasi** atau **Klik** untuk Melompat!
-    </div>
-
-    <div id="gameOverScreen">
-        <h1>GAME OVER!</h1>
-        <p>Anda gagal melompat. Skor Akhir: <span id="finalScore">0</span></p>
-        <button onclick="startGame()">Mulai Lagi</button>
+        <div id="gameBoard">
+            </div>
+        
+        <button id="startStopButton" onclick="startGame()">Mulai Game</button>
     </div>
 
     <script>
         // Logika Game JavaScript
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
+        const gameBoard = document.getElementById('gameBoard');
         const scoreDisplay = document.getElementById('scoreDisplay');
-        const speedDisplay = document.getElementById('speedDisplay');
-        const gameOverScreen = document.getElementById('gameOverScreen');
-        const finalScore = document.getElementById('finalScore');
+        const timerDisplay = document.getElementById('timerDisplay');
+        const startStopButton = document.getElementById('startStopButton');
 
         // --- Variabel Game ---
-        let gameLoopId;
-        let isGameOver = false;
         let score = 0;
-        let gameSpeed = 4; // Kecepatan horizontal awal
+        let time = 30; // Waktu game dalam detik
+        let gameRunning = false;
+        let moleTimerId; // Untuk mengontrol munculnya tikus
+        let gameTimerId; // Untuk menghitung mundur waktu
         
-        // Konstanta Fisika
-        const GRAVITY = 0.5;
-        const JUMP_POWER = -10;
-        const GROUND_Y = canvas.height - 20;
+        // Konstanta
+        const NUM_HOLES = 9;
+        const MOLE_EMOJI = '🐭';
+        const HIT_EMOJI = '💥';
 
-        let player = {
-            x: 50,
-            y: GROUND_Y - 20,
-            width: 20,
-            height: 20,
-            velocityY: 0,
-            isJumping: false,
-            color: '#00ff00' // Hijau Neon
-        };
-        
-        let obstacles = [];
-        let lastObstacleTime = 0;
-        const BASE_OBSTACLE_INTERVAL = 1500; // Milidetik
-
-        // --- Listener Kontrol ---
-        function handleJump(e) {
-            if (isGameOver) return;
-            if ((e.type === 'click' || e.key === ' ') && !player.isJumping) {
-                e.preventDefault();
-                player.velocityY = JUMP_POWER;
-                player.isJumping = true;
-            }
-        }
-        
-        document.addEventListener('keydown', handleJump);
-        canvas.addEventListener('click', handleJump);
-
-        // --- Fungsi Utama Game ---
-
+        // 1. Fungsi untuk memulai permainan
         function startGame() {
-            // Reset semua variabel
-            isGameOver = false;
+            if (gameRunning) return;
+
+            // Reset state
             score = 0;
-            gameSpeed = 4;
-            player.velocityY = 0;
-            player.isJumping = false;
-            player.y = GROUND_Y - player.height;
-            obstacles = [];
-            lastObstacleTime = 0;
-            
-            gameOverScreen.style.display = 'none';
-            
-            if (gameLoopId) {
-                cancelAnimationFrame(gameLoopId);
+            time = 30;
+            gameRunning = true;
+            scoreDisplay.textContent = "Skor: 0";
+            startStopButton.textContent = "Berjalan...";
+            startStopButton.disabled = true;
+
+            // Buat lubang jika belum ada
+            if (gameBoard.children.length === 0) {
+                createHoles();
             }
-            gameLoopId = requestAnimationFrame(gameLoop);
-            updateDisplay();
-        }
 
-        function updateDisplay() {
-            scoreDisplay.textContent = Math.floor(score);
-            speedDisplay.textContent = gameSpeed.toFixed(1);
-        }
-
-        function drawGround() {
-            ctx.fillStyle = '#696969'; // Dark Gray
-            ctx.fillRect(0, GROUND_Y, canvas.width, canvas.height - GROUND_Y);
-        }
-
-        function drawPlayer() {
-            ctx.fillStyle = player.color;
-            ctx.fillRect(player.x, player.y, player.width, player.height);
-        }
-
-        function updatePlayer() {
-            // Terapkan Gravitasi
-            if (player.isJumping) {
-                player.velocityY += GRAVITY;
-                player.y += player.velocityY;
-            }
+            // Mulai Timer Game (Hitung Mundur)
+            gameTimerId = setInterval(countdown, 1000);
             
-            // Cek pendaratan
-            if (player.y >= GROUND_Y - player.height) {
-                player.y = GROUND_Y - player.height; // Atur ke tanah
-                player.velocityY = 0;
-                player.isJumping = false;
+            // Mulai Timer Tikus (Spawn)
+            moleTimerId = setInterval(peep, 1000); // Tikus muncul setiap 1 detik
+        }
+
+        // 2. Fungsi untuk menghitung mundur
+        function countdown() {
+            time--;
+            timerDisplay.textContent = `Waktu: ${time} detik`;
+
+            if (time <= 0) {
+                endGame();
             }
         }
 
-        // --- Rintangan (Obstacles) ---
-        function spawnObstacle() {
-            obstacles.push({
-                x: canvas.width, // Mulai dari kanan
-                y: GROUND_Y - 20,
-                width: 20,
-                height: 20,
-                color: '#ff00ff' // Magenta
+        // 3. Fungsi untuk mengakhiri permainan
+        function endGame() {
+            clearInterval(gameTimerId);
+            clearInterval(moleTimerId);
+            gameRunning = false;
+            startStopButton.textContent = "Mulai Lagi";
+            startStopButton.disabled = false;
+            timerDisplay.textContent = `WAKTU HABIS! Skor Akhir: ${score}`;
+            
+            // Sembunyikan semua tikus yang mungkin masih muncul
+            document.querySelectorAll('.hole').forEach(hole => {
+                hole.classList.remove('up');
             });
         }
 
-        function updateObstacles() {
-            for (let i = obstacles.length - 1; i >= 0; i--) {
-                const obstacle = obstacles[i];
+        // 4. Fungsi untuk membuat elemen lubang
+        function createHoles() {
+            for (let i = 0; i < NUM_HOLES; i++) {
+                const hole = document.createElement('div');
+                hole.classList.add('hole');
+                hole.dataset.id = i;
                 
-                // Gerak ke kiri
-                obstacle.x -= gameSpeed; 
+                const mole = document.createElement('div');
+                mole.classList.add('mole');
+                mole.textContent = MOLE_EMOJI;
+                mole.addEventListener('click', whackMole);
 
-                // Hapus rintangan jika keluar dari layar kiri
-                if (obstacle.x + obstacle.width < 0) {
-                    obstacles.splice(i, 1);
-                    continue;
-                }
-                
-                ctx.fillStyle = obstacle.color;
-                ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+                hole.appendChild(mole);
+                gameBoard.appendChild(hole);
             }
         }
-        
-        // --- Logika Game ---
-        
-        function checkCollisions() {
-            const playerRect = {
-                left: player.x,
-                right: player.x + player.width,
-                top: player.y,
-                bottom: player.y + player.height
-            };
 
-            for (const obstacle of obstacles) {
-                const obsRect = {
-                    left: obstacle.x,
-                    right: obstacle.x + obstacle.width,
-                    top: obstacle.y,
-                    bottom: obstacle.y + obstacle.height
-                };
-
-                // Deteksi tabrakan (overlap)
-                if (playerRect.left < obsRect.right &&
-                    playerRect.right > obsRect.left &&
-                    playerRect.top < obsRect.bottom &&
-                    playerRect.bottom > obsRect.top) {
-                    
-                    endGame();
-                    return true;
-                }
-            }
-            return false;
-        }
-        
-        function updateScoreAndSpeed(deltaTime) {
-            // Menambah skor berdasarkan waktu bertahan
-            score += 0.1; 
+        // 5. Fungsi agar tikus muncul
+        function peep() {
+            if (!gameRunning) return;
             
-            // Meningkatkan kecepatan game seiring waktu
-            gameSpeed = Math.min(10, gameSpeed + 0.0005); 
-        }
-        
-        function endGame() {
-            isGameOver = true;
-            cancelAnimationFrame(gameLoopId);
+            const holes = document.querySelectorAll('.hole');
             
-            finalScore.textContent = Math.floor(score);
-            gameOverScreen.style.display = 'flex';
-        }
-
-        // --- Loop Utama Game ---
-        let lastTime = 0;
-        function gameLoop(timestamp) {
-            if (isGameOver) return;
-            
-            const deltaTime = timestamp - lastTime;
-            lastTime = timestamp;
-
-            // 1. Bersihkan Canvas
-            ctx.fillStyle = '#111';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // 2. Update Logika
-            updateScoreAndSpeed(deltaTime);
-            updatePlayer();
-            
-            // Kelola Spawn Rintangan (interval berkurang seiring kecepatan)
-            if (timestamp - lastObstacleTime > BASE_OBSTACLE_INTERVAL / (gameSpeed / 4)) {
-                spawnObstacle();
-                lastObstacleTime = timestamp;
-            }
-            updateObstacles();
-            
-            // 3. Deteksi Tabrakan
-            if (checkCollisions()) return;
-            
-            // 4. Gambar
-            drawGround();
-            drawPlayer();
-            updateDisplay();
-
-            // Loop berikutnya
-            gameLoopId = requestAnimationFrame(gameLoop);
-        }
-
-        // Mulai Game saat pertama kali dimuat
-        document.addEventListener('DOMContentLoaded', startGame);
-    </script>
-</body>
-</html>
+            // Pastikan tidak ada tikus yang sedang muncul
+            holes
