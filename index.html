@@ -3,163 +3,213 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Game Batu Kertas Gunting</title>
+    <title>Game Kliker Sederhana</title>
 
     <style>
         /* CSS untuk tampilan game */
         body {
-            font-family: 'Arial', sans-serif;
+            font-family: 'Verdana', sans-serif;
             text-align: center;
-            background-color: #f8f9fa;
-            color: #212529;
+            background-color: #ffe6cc;
+            color: #4d2600;
             margin-top: 50px;
         }
 
         .container {
             width: 90%;
-            max-width: 600px;
+            max-width: 700px;
             margin: 0 auto;
-            padding: 20px;
-            background-color: #ffffff;
-            border-radius: 12px;
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            background-color: #fff9f0;
+            border: 5px solid #cc8400;
+            border-radius: 15px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
         }
 
         h1 {
-            color: #007bff;
-            margin-bottom: 25px;
-        }
-
-        .choices {
-            display: flex;
-            justify-content: space-around;
-            margin-bottom: 30px;
-        }
-
-        .choice-btn {
-            background-color: #e9ecef;
-            border: none;
-            padding: 15px 25px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 3em; /* Ukuran besar untuk emoji */
-            transition: transform 0.2s, background-color 0.2s;
-        }
-
-        .choice-btn:hover {
-            background-color: #ced4da;
-            transform: scale(1.05);
-        }
-
-        .result-area {
-            border: 2px solid #adb5bd;
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 20px;
-            min-height: 100px;
-        }
-
-        #result {
-            font-size: 1.5em;
-            font-weight: bold;
+            color: #cc8400;
             margin-bottom: 10px;
         }
+        
+        #scoreDisplay {
+            font-size: 3em;
+            font-weight: bold;
+            margin: 20px 0;
+            color: #804c00;
+        }
 
-        #score {
-            font-size: 1.1em;
-            color: #495057;
+        /* Tombol Utama Klik */
+        #mainButton {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 8em; /* Ukuran emoji besar */
+            transition: transform 0.1s;
+            outline: none;
+            padding: 10px;
+        }
+
+        #mainButton:active {
+            transform: scale(0.95);
+        }
+
+        /* Area Upgrade */
+        .upgrade-section {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px dashed #cc8400;
         }
         
-        .win { color: #28a745; }
-        .lose { color: #dc3545; }
-        .draw { color: #ffc107; }
+        .upgrade-section h2 {
+            color: #a05e00;
+            margin-bottom: 20px;
+        }
+
+        .upgrade-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #ffdab3;
+            padding: 10px 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+        }
         
+        .upgrade-item span {
+            font-weight: bold;
+        }
+
+        .buy-btn {
+            padding: 8px 15px;
+            background-color: #008000;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .buy-btn:hover:not(:disabled) {
+            background-color: #006400;
+        }
+
+        .buy-btn:disabled {
+            background-color: #b0b0b0;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h1>✊ Game Batu Kertas Gunting 🖐️</h1>
-        <p>Pilih salah satu ikon di bawah untuk melawan Komputer.</p>
+        <h1>🍪 Cookie Clicker Sederhana</h1>
+        
+        <div id="scoreDisplay">0</div>
 
-        <div class="choices">
-            <button class="choice-btn" data-choice="batu">✊</button>
-            <button class="choice-btn" data-choice="kertas">🖐️</button>
-            <button class="choice-btn" data-choice="gunting">✌️</button>
+        <button id="mainButton" aria-label="Klik untuk mendapatkan cookie">🍪</button>
+        <p>Klik cookie untuk mendapatkan poin!</p>
+
+        <div class="upgrade-section">
+            <h2>Upgrade (Poin per detik)</h2>
+            
+            <div id="upgradesList">
+                </div>
+            
+            <p id="cpsDisplay">Poin Otomatis (CPS): 0 / detik</p>
         </div>
-
-        <div class="result-area">
-            <p id="playerChoice">Anda memilih: ?</p>
-            <p id="computerChoice">Komputer memilih: ?</p>
-            <p id="result">Pilih gerakan Anda untuk memulai!</p>
-        </div>
-
-        <p id="score">Skor: Anda 0 | Komputer 0</p>
     </div>
 
     <script>
         // Logika Game JavaScript
-        let playerScore = 0;
-        let computerScore = 0;
-
-        // Pilihan yang mungkin dan emoji-nya
-        const choices = {
-            'batu': { emoji: '✊', beats: 'gunting' },
-            'kertas': { emoji: '🖐️', beats: 'batu' },
-            'gunting': { emoji: '✌️', beats: 'kertas' }
-        };
+        let score = 0;
+        let cookiesPerSecond = 0;
+        
+        // Data Upgrade: Nama, Biaya, dan Efek
+        const upgradeData = [
+            { id: 'mouse', name: '🖱️ Tangan Pembantu', cost: 10, cps: 0.1, count: 0 },
+            { id: 'grandma', name: '👵 Nenek Pengumpul', cost: 100, cps: 1, count: 0 },
+            { id: 'farm', name: '🌾 Ladang Cookie', cost: 1000, cps: 8, count: 0 }
+        ];
 
         // Mengambil elemen DOM
-        const resultDisplay = document.getElementById('result');
-        const scoreDisplay = document.getElementById('score');
-        const playerChoiceDisplay = document.getElementById('playerChoice');
-        const computerChoiceDisplay = document.getElementById('computerChoice');
-        const choiceButtons = document.querySelectorAll('.choice-btn');
+        const scoreDisplay = document.getElementById('scoreDisplay');
+        const mainButton = document.getElementById('mainButton');
+        const upgradesList = document.getElementById('upgradesList');
+        const cpsDisplay = document.getElementById('cpsDisplay');
 
-        // 1. Fungsi untuk mendapatkan pilihan komputer secara acak
-        function getComputerChoice() {
-            const keys = Object.keys(choices);
-            const randomIndex = Math.floor(Math.random() * keys.length);
-            return keys[randomIndex]; // Mengembalikan 'batu', 'kertas', atau 'gunting'
+        // 1. Fungsi Update Tampilan Utama
+        function updateDisplay() {
+            scoreDisplay.textContent = Math.floor(score); // Tampilkan bilangan bulat
+            cpsDisplay.textContent = `Poin Otomatis (CPS): ${cookiesPerSecond.toFixed(1)} / detik`;
+            updateUpgradeButtons();
         }
 
-        // 2. Fungsi utama untuk memainkan satu putaran
-        function playRound(playerSelection) {
-            const computerSelection = getComputerChoice();
-            let outcome = '';
+        // 2. Fungsi untuk Menambahkan Poin
+        function clickCookie() {
+            score += 1;
+            updateDisplay();
+        }
 
-            // Tampilkan pilihan
-            playerChoiceDisplay.textContent = `Anda memilih: ${choices[playerSelection].emoji} ${playerSelection.toUpperCase()}`;
-            computerChoiceDisplay.textContent = `Komputer memilih: ${choices[computerSelection].emoji} ${computerSelection.toUpperCase()}`;
-
-            // Logika Penentuan Pemenang
-            if (playerSelection === computerSelection) {
-                outcome = 'Seri!';
-                resultDisplay.className = 'draw';
-            } else if (choices[playerSelection].beats === computerSelection) {
-                outcome = 'Anda Menang!';
-                playerScore++;
-                resultDisplay.className = 'win';
-            } else {
-                outcome = 'Anda Kalah!';
-                computerScore++;
-                resultDisplay.className = 'lose';
+        // 3. Fungsi Beli Upgrade
+        function buyUpgrade(index) {
+            const upgrade = upgradeData[index];
+            if (score >= upgrade.cost) {
+                score -= upgrade.cost;
+                cookiesPerSecond += upgrade.cps;
+                upgrade.count++;
+                
+                // Menaikkan biaya upgrade berikutnya (Contoh: naik 15%)
+                upgrade.cost = Math.floor(upgrade.cost * 1.15); 
+                
+                // Render ulang daftar upgrade dan tampilan utama
+                renderUpgrades();
+                updateDisplay();
             }
-
-            // Update Tampilan Hasil dan Skor
-            resultDisplay.textContent = outcome;
-            scoreDisplay.textContent = `Skor: Anda ${playerScore} | Komputer ${computerScore}`;
         }
 
-        // 3. Menambahkan Event Listener ke setiap tombol pilihan
-        document.addEventListener('DOMContentLoaded', () => {
-            choiceButtons.forEach(button => {
-                button.addEventListener('click', (e) => {
-                    const playerChoice = e.currentTarget.getAttribute('data-choice');
-                    playRound(playerChoice);
-                });
+        // 4. Fungsi Render Daftar Upgrade
+        function renderUpgrades() {
+            upgradesList.innerHTML = ''; // Bersihkan daftar lama
+            
+            upgradeData.forEach((upgrade, index) => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'upgrade-item';
+                itemDiv.innerHTML = `
+                    <span>${upgrade.name} (x${upgrade.count})</span>
+                    <span>Biaya: ${upgrade.cost} | CPS: +${upgrade.cps}</span>
+                    <button id="buy-${upgrade.id}" class="buy-btn" 
+                        onclick="buyUpgrade(${index})"
+                        ${score < upgrade.cost ? 'disabled' : ''}>
+                        Beli
+                    </button>
+                `;
+                upgradesList.appendChild(itemDiv);
             });
+        }
+        
+        // 5. Fungsi Update Status Tombol Beli (lebih cepat dari render penuh)
+        function updateUpgradeButtons() {
+             upgradeData.forEach((upgrade) => {
+                const button = document.getElementById(`buy-${upgrade.id}`);
+                if (button) {
+                     button.disabled = score < upgrade.cost;
+                }
+            });
+        }
+
+        // 6. Loop Game (Poin Otomatis)
+        setInterval(() => {
+            score += cookiesPerSecond / 10; // Dibagi 10 karena interval 100ms
+            updateDisplay(); 
+        }, 100); // Update setiap 100 milidetik
+
+        // 7. Inisialisasi
+        document.addEventListener('DOMContentLoaded', () => {
+            mainButton.addEventListener('click', clickCookie);
+            renderUpgrades();
+            updateDisplay();
         });
+        
     </script>
 </body>
 </html>
